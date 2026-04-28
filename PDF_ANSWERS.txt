@@ -1,0 +1,319 @@
+=========================================================
+  COS221 Practical 4 — PDF Submission
+  Student Number: uXXXXXXXX
+  Full Name:      [Your Full Name]
+  Date:           29 April 2026
+=========================================================
+
+─────────────────────────────────────────────────────────
+TASK 1: DATABASE SETUP
+─────────────────────────────────────────────────────────
+
+The Chinook_MySql.sql script was obtained from the official
+Chinook GitHub repository:
+https://github.com/lerocha/chinook-database/releases
+
+Import process:
+1. Opened Chinook_MySql.sql in Notepad and used Find & Replace
+   to rename the database from `Chinook` to `u12345678_chinook`
+   (two replacements: CREATE DATABASE and USE statements).
+
+2. Opened MySQL Workbench and connected to localhost:3306.
+
+3. Used File → Run SQL Script to execute the modified SQL file.
+
+4. Verified successful import using: SHOW TABLES;
+   Result: 11 tables confirmed present.
+
+Database name: u12345678_chinook
+
+─────────────────────────────────────────────────────────
+TASK 2: PRE-PACKAGED DB TOOL
+─────────────────────────────────────────────────────────
+
+2.1 Chosen Tool:
+    MySQL Workbench 8.0
+
+    MySQL Workbench is the official GUI administration tool
+    for MySQL and MariaDB databases. It provides:
+    - Visual database design and EER diagram generation
+    - SQL query editor with syntax highlighting
+    - Data browsing and table management
+    - Import/export functionality
+    - Server administration and monitoring
+
+2.2 Screenshot:
+    [INSERT SCREENSHOT HERE]
+    The screenshot shows MySQL Workbench with:
+    - Database u12345678_chinook visible in the left panel
+    - All 11 tables listed under the Tables section:
+      Album, Artist, Customer, Employee, Genre,
+      Invoice, InvoiceLine, MediaType, Playlist,
+      PlaylistTrack, Track
+
+─────────────────────────────────────────────────────────
+TASK 3: (E)ER DIAGRAM
+─────────────────────────────────────────────────────────
+
+3.1 EER Diagram:
+    [INSERT GENERATED EER DIAGRAM HERE]
+    Generated using: MySQL Workbench → Database → Reverse Engineer
+    → selected u12345678_chinook → completed wizard
+
+─────────────────────────────────────────────────────────
+3.2 INVOICE TABLE — FULL ANALYSIS
+─────────────────────────────────────────────────────────
+
+TABLE STRUCTURE:
+    CREATE TABLE `Invoice` (
+        `InvoiceId`         INT           NOT NULL,
+        `CustomerId`        INT           NOT NULL,
+        `InvoiceDate`       DATETIME      NOT NULL,
+        `BillingAddress`    NVARCHAR(70),
+        `BillingCity`       NVARCHAR(40),
+        `BillingState`      NVARCHAR(40),
+        `BillingCountry`    NVARCHAR(40),
+        `BillingPostalCode` NVARCHAR(10),
+        `Total`             NUMERIC(10,2) NOT NULL,
+        CONSTRAINT `PK_Invoice` PRIMARY KEY (`InvoiceId`)
+    );
+
+DATA HELD:
+    The Invoice table represents a completed sales transaction
+    in the Chinook digital music store. Each row records one
+    purchase event made by a customer. The table stores:
+
+    - Which customer made the purchase (CustomerId)
+    - When the purchase occurred (InvoiceDate)
+    - The billing address at the time of purchase
+      (BillingAddress, BillingCity, BillingState,
+       BillingCountry, BillingPostalCode)
+      NOTE: These are stored on the invoice itself rather than
+      referencing the customer's current address. This is
+      intentional — if a customer moves later, the historical
+      billing address on each invoice remains accurate.
+    - The total monetary value of the transaction (Total)
+
+DATA TYPES:
+    InvoiceId         INT           — 32-bit integer, uniquely identifies
+                                      each invoice record
+    CustomerId        INT           — 32-bit integer FK, links to Customer
+    InvoiceDate       DATETIME      — stores both date and time of purchase
+                                      e.g. 2009-01-01 00:00:00
+    BillingAddress    NVARCHAR(70)  — Unicode variable-length string,
+                                      max 70 characters, nullable
+    BillingCity       NVARCHAR(40)  — Unicode string, max 40 chars, nullable
+    BillingState      NVARCHAR(40)  — Unicode string, max 40 chars, nullable
+    BillingCountry    NVARCHAR(40)  — Unicode string, max 40 chars, nullable
+    BillingPostalCode NVARCHAR(10)  — Unicode string, max 10 chars, nullable
+    Total             NUMERIC(10,2) — Fixed-point decimal: 10 total digits,
+                                      2 decimal places (e.g. 99999999.99 max)
+                                      Used for currency to avoid floating-point
+                                      rounding errors
+
+CONSTRAINTS:
+    PRIMARY KEY (InvoiceId):
+      Ensures every invoice has a unique identifier.
+      Enforces entity integrity — no two invoices can share
+      the same InvoiceId. MySQL automatically creates a
+      unique index on the primary key column.
+
+    NOT NULL on InvoiceId, CustomerId, InvoiceDate, Total:
+      These four fields are mandatory for every invoice.
+      An invoice cannot exist without knowing:
+      - Its own identity (InvoiceId)
+      - Who made the purchase (CustomerId)
+      - When it occurred (InvoiceDate)
+      - How much was charged (Total)
+
+    NULLABLE: BillingAddress, BillingCity, BillingState,
+              BillingCountry, BillingPostalCode:
+      Billing address fields are optional. Some customers
+      may not have a complete address on file. Making these
+      nullable allows the store to record a purchase even
+      when full address details are unavailable.
+
+RELATIONSHIPS:
+
+    1. Invoice MANY-TO-ONE Customer:
+       Foreign Key: Invoice.CustomerId → Customer.CustomerId
+       Constraint name: FK_InvoiceCustomerId
+       Index: IFK_InvoiceCustomerId ON Invoice(CustomerId)
+
+       Meaning: Every invoice MUST belong to exactly one customer
+       (NOT NULL on CustomerId enforces this). One customer can
+       have many invoices over their lifetime with the store.
+       ON DELETE NO ACTION means a customer cannot be deleted
+       if they have any invoice records — preserving financial
+       data integrity.
+
+    2. Invoice ONE-TO-MANY InvoiceLine:
+       Foreign Key: InvoiceLine.InvoiceId → Invoice.InvoiceId
+       Constraint name: FK_InvoiceLineInvoiceId
+
+       Meaning: Each invoice contains one or more line items.
+       Each InvoiceLine row represents one track purchased on
+       that invoice, storing the TrackId, UnitPrice, and Quantity
+       for that specific item. The Invoice.Total should equal
+       the sum of (UnitPrice × Quantity) across all InvoiceLines
+       for that invoice.
+
+    Relationship summary:
+    ┌──────────┐  1    *  ┌─────────┐  1    *  ┌─────────────┐
+    │ Customer │──────────│ Invoice │──────────│ InvoiceLine │
+    └──────────┘          └─────────┘          └─────────────┘
+                                                      │ *
+                                                      │
+                                                      │ 1
+                                                ┌─────────┐
+                                                │  Track  │
+                                                └─────────┘
+
+─────────────────────────────────────────────────────────
+TASK 6.2 BONUS — ADVANCED SQL DOCUMENTATION
+─────────────────────────────────────────────────────────
+
+The following SQL constructs used in the application go
+beyond standard SQL from lectures 1–17 and qualify for
+bonus marks under Task 6.2.
+
+═══════════════════════════════════════════════════════════
+1. SELF-JOIN (EmployeesPanel — Supervisor column)
+═══════════════════════════════════════════════════════════
+
+Location: EmployeesPanel.java → loadData()
+
+SQL:
+    SELECT
+        e.FirstName, e.LastName, e.Title, e.City,
+        e.Country, e.Phone,
+        COALESCE(CONCAT(m.FirstName, ' ', m.LastName), 'None') AS Supervisor,
+        CASE
+            WHEN COUNT(c.CustomerId) > 0 THEN 'Active'
+            ELSE 'Inactive'
+        END AS Status
+    FROM Employee e
+    LEFT JOIN Employee m  ON e.ReportsTo    = m.EmployeeId
+    LEFT JOIN Customer c  ON c.SupportRepId = e.EmployeeId
+    GROUP BY e.EmployeeId, e.FirstName, e.LastName, e.Title,
+             e.City, e.Country, e.Phone, m.FirstName, m.LastName
+    ORDER BY e.LastName, e.FirstName
+
+Why it is advanced:
+    A self-join joins a table to itself using two aliases.
+    Here 'e' is the employee and 'm' is their manager —
+    both selected from the same Employee table.
+    e.ReportsTo = m.EmployeeId links child to parent.
+    LEFT JOIN ensures employees with no manager (the CEO)
+    still appear with Supervisor = 'None'.
+    CASE WHEN is SQL's conditional expression (if-else).
+    COALESCE returns the first non-NULL value.
+    CONCAT builds a full name string from two columns.
+    This combines self-join + aggregation + CASE in one query.
+
+═══════════════════════════════════════════════════════════
+2. LEFT JOIN + GROUP BY + HAVING (NotificationsPanel)
+═══════════════════════════════════════════════════════════
+
+Location: NotificationsPanel.java → loadInactiveCustomers()
+
+SQL:
+    SELECT
+        c.CustomerId, c.FirstName, c.LastName, c.Email,
+        COALESCE(CAST(MAX(i.InvoiceDate) AS CHAR), 'Never') AS LastInvoice
+    FROM Customer c
+    LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId
+    GROUP BY c.CustomerId, c.FirstName, c.LastName, c.Email
+    HAVING MAX(i.InvoiceDate) IS NULL
+        OR MAX(i.InvoiceDate) < DATE_SUB(NOW(), INTERVAL 2 YEAR)
+    ORDER BY LastInvoice ASC
+
+Why it is advanced:
+    LEFT JOIN retains customers with zero invoices (they get NULLs).
+    GROUP BY collapses multiple invoice rows into one per customer.
+    HAVING filters AFTER aggregation — WHERE cannot reference
+    aggregate functions like MAX().
+    MAX(i.InvoiceDate) IS NULL identifies customers with no invoices
+    because the MAX of a set of NULLs is NULL.
+    DATE_SUB(NOW(), INTERVAL 2 YEAR) dynamically computes the
+    cutoff date — no hardcoded dates required.
+    Combining LEFT JOIN + GROUP BY + HAVING + DATE functions in
+    one query is significantly more complex than standard
+    single-table WHERE queries from lectures.
+
+═══════════════════════════════════════════════════════════
+3. NOT IN SUBQUERY (RecommendationsPanel)
+═══════════════════════════════════════════════════════════
+
+Location: RecommendationsPanel.java → loadRecommendations()
+
+SQL:
+    SELECT t.Name, al.Title, ar.Name, g.Name
+    FROM Track t
+    JOIN Genre g    ON t.GenreId   = g.GenreId
+    JOIN Album al   ON t.AlbumId   = al.AlbumId
+    JOIN Artist ar  ON al.ArtistId = ar.ArtistId
+    WHERE g.Name = ?
+      AND t.TrackId NOT IN (
+          SELECT il.TrackId
+          FROM InvoiceLine il
+          JOIN Invoice i ON il.InvoiceId = i.InvoiceId
+          WHERE i.CustomerId = ?
+      )
+    ORDER BY RAND()
+    LIMIT 10
+
+Why it is advanced:
+    NOT IN uses a nested subquery — a complete SELECT statement
+    embedded inside the WHERE clause of the outer query.
+    The subquery itself joins two tables (InvoiceLine and Invoice)
+    and returns all TrackIds the selected customer has purchased.
+    The outer query then excludes those tracks from recommendations.
+    ORDER BY RAND() is non-standard — standard ORDER BY uses
+    column names. RAND() generates a random value per row,
+    causing MySQL to shuffle results differently each execution.
+    This is the most complex SQL construct in the application.
+
+═══════════════════════════════════════════════════════════
+4. MULTI-TABLE JOIN + AGGREGATION (RecommendationsPanel)
+═══════════════════════════════════════════════════════════
+
+Location: RecommendationsPanel.java → loadFavouriteGenre()
+
+SQL:
+    SELECT g.Name AS Genre, COUNT(*) AS TrackCount
+    FROM Invoice i
+    JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+    JOIN Track t        ON il.TrackId  = t.TrackId
+    JOIN Genre g        ON t.GenreId   = g.GenreId
+    WHERE i.CustomerId = ?
+    GROUP BY g.GenreId, g.Name
+    ORDER BY TrackCount DESC
+    LIMIT 1
+
+Why it is advanced:
+    Chains four tables in a single query to traverse from
+    a customer's invoices all the way to genre classification.
+    The join path is: Invoice → InvoiceLine → Track → Genre.
+    COUNT(*) counts purchased tracks per genre.
+    GROUP BY collapses to one row per genre.
+    ORDER BY TrackCount DESC + LIMIT 1 efficiently retrieves
+    only the most-purchased genre without application-layer sorting.
+    This demonstrates understanding of multi-hop relational joins
+    combined with aggregation — beyond single or two-table examples
+    covered in lectures.
+
+─────────────────────────────────────────────────────────
+TASK 6.1 — GIT & GITHUB
+─────────────────────────────────────────────────────────
+
+GitHub Repository URL: https://github.com/[yourname]/cos221-practical4
+
+[INSERT SCREENSHOT OF GITHUB SHOWING YOUR COMMITS HERE]
+
+Commits made: 10+ commits covering all major features.
+Each commit message describes the feature added.
+
+─────────────────────────────────────────────────────────
+END OF PDF SUBMISSION
+─────────────────────────────────────────────────────────
