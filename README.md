@@ -2,3 +2,5 @@
 "## Features:" 
 "- Employees tab (self-join for supervisor)" 
 "- Tracks tab (add track popup with dropdowns)" 
+"- Report tab (genre revenue aggregation)" 
+"- Notifications tab (CRUD + inactive customers)" 
