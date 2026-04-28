@@ -4,3 +4,4 @@
 "- Tracks tab (add track popup with dropdowns)" 
 "- Report tab (genre revenue aggregation)" 
 "- Notifications tab (CRUD + inactive customers)" 
+"- Recommendations tab (NOT IN subquery)" 
